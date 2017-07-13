@@ -8,3 +8,4 @@ x TLS (done)
 - make able to send multiple emails, also argparse
 - the changes above require a change to when the connection is opened, must be moved up
 
+- add a function that does mx lookups so it can send without an explicit MTA declared

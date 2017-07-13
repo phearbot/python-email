@@ -23,7 +23,7 @@ parser.add_argument("-S", "--subject", metavar="<subject>", type=str, help="Subj
 
 # Mutually exclusive group for body types (you can use a string or a file, not both)
 body_group = parser.add_mutually_exclusive_group()
-body_group.add_argument("-b", "--body-string", metavar="<body>", type=str, help="String for the body of the email")
+body_group.add_argument("-b", "--body", metavar="<body>", type=str, help="String for the body of the email")
 # body_group.add_argument("-B", "--body", metavar="<body>", type=str, help="Full or relative path to email body file")
 
 parser.add_argument("-H", action="store_true", help="Adds an HTML body in addition to the plain text body")
