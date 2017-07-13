@@ -1,0 +1,10 @@
+# Things to do in emailattach.py
+
+x Make it conform to SMTP standards (currently attachments are an "alternate") (done)
+x TLS (done)
+- enable a config file to use to override defaults?  
+- enable multiple attachments (may be tricky, probably doable with argparse)
+	https://stackoverflow.com/questions/26727314/multiple-files-for-one-argument-in-argparse-python-2-7
+- make able to send multiple emails, also argparse
+- the changes above require a change to when the connection is opened, must be moved up
+
