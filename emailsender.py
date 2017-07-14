@@ -33,6 +33,8 @@ parser.add_argument("-v", action="store_true", help="Verbose mode")
 
 args = parser.parse_args()
 
+# Creates key/value pair to return qids and filenames
+qids = {}
 
 def main():
 	# Build the SMTP Connection
@@ -41,14 +43,20 @@ def main():
 	# Iterate through, building and sending messages for each attachment provided	
 	for a in args.attach:
 		msg = buildmsg(a)	
-		sendmsg(server, msg)
+		qid = sendmsg(server, msg)
+		qids[qid] = a
 
 	# Close SMTP connection	
 	prquit = server.docmd("QUIT")
 	
 	if (args.v):
 		print prquit 
-	
+
+	# Debugging
+	#for x in qids:
+	#	print x, qids[x]	
+
+	return qids
 
 
 def buildsmtp():
@@ -159,7 +167,7 @@ def sendmsg(server, msg):
 	prfrom = server.docmd("MAIL from:", args.sender)
 	prto = server.docmd("RCPT to:", args.recipient)
 	prdata = server.docmd("DATA")
-	qid = server.docmd(msg.as_string() + "\r\n.")
+	qidline = server.docmd(msg.as_string() + "\r\n.")
 	
 	
 	# Prints what happened above when attempting to send
@@ -167,10 +175,12 @@ def sendmsg(server, msg):
 		print prfrom
 		print prto
 		print prdata
-		print qid
+		print qidline
+
+	qid = qidline[1].split(" ")[4]
 	if args.q:
-		# print qid
-		print qid[1].split(" ")[4]
+		print qid
+	return qid
 
 
 if __name__== "__main__":
