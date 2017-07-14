@@ -18,7 +18,7 @@ parser.add_argument("-s", "--sender", metavar="<sender>", type=str, default="pyt
 parser.add_argument("-r", "--recipient", metavar="<recipient>", type=str, required=True)
 parser.add_argument("-m", "--mta", metavar="<ip address>", type=str, required=True, help="IP address of next-hop MTA")
 parser.add_argument("-p", "--port", metavar="<port>", type=str, help="Port email will send on (def: 25)", default="25")
-parser.add_argument("-a", "--attach", metavar="<attachment>", type=str, help="Full or relative path to attachment")
+parser.add_argument("-a", "--attach", metavar="<attachment>", type=str, nargs='+', help="Full or relative path to attachment")
 parser.add_argument("-S", "--subject", metavar="<subject>", type=str, help="Subject of the email", default="email sent by python script")
 
 # Mutually exclusive group for body types (you can use a string or a file, not both)
@@ -146,9 +146,10 @@ if args.v:
 	print prfrom
 	print prto
 	print prdata
-if (args.q or args.v):
 	print qid
-	# print qid[1].split(" ")[4]
+if args.q:
+	# print qid
+	print qid[1].split(" ")[4]
 
 # This line has to be moved below the loop
 prquit = server.docmd("QUIT")
