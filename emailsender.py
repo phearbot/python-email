@@ -33,139 +33,145 @@ parser.add_argument("-v", action="store_true", help="Verbose mode")
 
 args = parser.parse_args()
 
-# Create the SMTP object (server format "ip:port") Note: This actually checks to see if the port is open
-try: 
-	server = smtplib.SMTP(args.mta + ":" + args.port)
-except:
-	print "Error 001: Unable to connect to " + args.mta + " on port " + args.port
-	exit()	
 
-# If selected, attempts to negotiate TLS (also, prhelo = print helo)
-if args.t:
-	prhelo = server.ehlo()
-	try:
-		server.starttls()
-		server.ehlo()
-		if args.v:
-			print "TlS started successfully."
-	except: 
-		print "TLS was not accepted by " + args.mta + ". \nAttempting to send unencrypted."
+def main():
+	# Build the SMTP Connection
+	server = buildsmtp()
 
-# If no TLS flag, initiates the connection
-else:
-	try:
-		prhelo = server.docmd("helo", "labs.test")
+	# Iterate through, building and sending messages for each attachment provided	
+	for a in args.attach:
+		msg = buildmsg(a)	
+		sendmsg(server, msg)
+
+	# Close SMTP connection	
+	prquit = server.docmd("QUIT")
+	
+	if (args.v):
+		print prquit 
+	
+
+
+def buildsmtp():
+	# Create the SMTP object (server format "ip:port") Note: This actually checks to see if the port is open
+	try: 
+		server = smtplib.SMTP(args.mta + ":" + args.port)
 	except:
-		print "Error 002: Sending email failed, could be a bad address?" 
-if args.v:
-	print "Attempting to send the email to " + args.mta + ":" + args.port
-
-if args.v:
-	print prhelo
-
-# NOT YET IMPLEMENTED
-# This can be used for server auth (like gmail), but it's disabled. You will need to add the 'server.login(username,password)' line in somewhere
-# username = "user"
-# password = "password"
-# server.login(username,password)
-
-
-### LOOP WILL BEGIN HERE 
-
-# Create the message and add sender, recipient and subject (This will be used if you aren't using the -q flag)
-msg = MIMEMultipart()
-msg["From"] = args.sender
-msg["To"] = args.recipient
-msg["Subject"] = args.subject
-msg.preamble = args.subject
-
-# Create the alternative for the text/plain and text/html. This object is attached inside the multipart message
-alt_msg = MIMEMultipart('alternative')
-
-# Verbose logging to display to/from/subj
-if args.v:
-	print "\n### Verbose Output Enabled ###\n"
-	print "From: " + args.sender
-	print "To: " + args.recipient
-	print "Subject: " + args.subject 
-	if args.attach:
-		print "Attachment:  " + os.path.basename(args.attach) + "\n"
-
-# Attaches text/plain. Also attaches HTML if it is selected
-# https://docs.python.org/3/library/email-examples.html (RFC 2046)
-alt_msg.attach(MIMEText(args.body, "plain"))
-if args.H:
-	alt_msg.attach(MIMEText(args.body, "html"))
-
-msg.attach(alt_msg)
-
-# Checks for an attachment argument, and if there is one identify it's type. 
-# Borrowed from https://docs.python.org/2.4/lib/node597.html
-if args.attach is not None:
-	ctype, encoding = mimetypes.guess_type(args.attach)
-	if ctype is None or encoding is not None:
-	    ctype = "application/octet-stream"
+		print "Error 001: Unable to connect to " + args.mta + " on port " + args.port
+		exit()	
 	
-	maintype, subtype = ctype.split("/", 1)
+	# If selected, attempts to negotiate TLS (also, prhelo = print helo)
+	if args.t:
+		prhelo = server.ehlo()
+		try:
+			server.starttls()
+			server.ehlo()
+			if args.v:
+				print "TlS started successfully."
+		except: 
+			print "TLS was not accepted by " + args.mta + ". \nAttempting to send unencrypted."
 	
-	if maintype == "text":
-	    fp = open(args.attach)
-	    # Note: we should handle calculating the charset
-	    attachment = MIMEText(fp.read(), _subtype=subtype)
-	    fp.close()
-	elif maintype == "image":
-	    fp = open(args.attach, "rb")
-	    attachment = MIMEImage(fp.read(), _subtype=subtype)
-	    fp.close()
-	elif maintype == "audio":
-	    fp = open(args.attach, "rb")
-	    attachment = MIMEAudio(fp.read(), _subtype=subtype)
-	    fp.close()
+	# If no TLS flag, initiates the connection
 	else:
-	    fp = open(args.attach, "rb")
-	    attachment = MIMEBase(maintype, subtype)
-	    attachment.set_payload(fp.read())
-	    fp.close()
-	    encoders.encode_base64(attachment)
-	attachment.add_header("Content-Disposition", "attachment", filename=os.path.basename(args.attach))
-	msg.attach(attachment)
-
-# This line will literally print the entire email including headers
-# print "\n\n\n" + msg.as_string() + "\n\n\n"
-
-
-# Sends the email DATA
-prfrom = server.docmd("MAIL from:", args.sender)
-prto = server.docmd("RCPT to:", args.recipient)
-prdata = server.docmd("DATA")
-qid = server.docmd(msg.as_string() + "\r\n.")
-
-
-# Prints what happened above when attempting to send
-if args.v:
-	print prfrom
-	print prto
-	print prdata
-	print qid
-if args.q:
-	# print qid
-	print qid[1].split(" ")[4]
-
-# This line has to be moved below the loop
-prquit = server.docmd("QUIT")
-
-if (args.v):
-	print prquit 
-
-# Sends the email using pythons built in email builder
-# This is no longer used because it's impossible to get the queue id response.
-# This is due to the way the sendmail function is written. Everything in the
-# "Sends the email DATA" section is a workaround for this issue
-# 	try: 
-# 		server.sendmail(args.sender, args.recipient, msg.as_string())
-# 		print "Email sent successfully!" 
-#		server.quit() 
-# 	except:
-# 		print "Error 003: Sending email failed, could be a bad address?"	
+		try:
+			prhelo = server.docmd("helo", "labs.test")
+		except:
+			print "Error 002: Sending email failed, could be a bad address?" 
+	if args.v:
+		print "Attempting to send the email to " + args.mta + ":" + args.port
+	
+	if args.v:
+		print prhelo
+	
+	# NOT YET IMPLEMENTED
+	# This can be used for server auth (like gmail), but it's disabled. You will need to add the 'server.login(username,password)' line in somewhere
+	# username = "user"
+	# password = "password"
+	# server.login(username,password)
+	return server
 
 
+def buildmsg(a):
+	# Create the message and add sender, recipient and subject (This will be used if you aren't using the -q flag)
+	msg = MIMEMultipart()
+	msg["From"] = args.sender
+	msg["To"] = args.recipient
+	msg["Subject"] = args.subject
+	msg.preamble = args.subject
+	
+	# Create the alternative for the text/plain and text/html. This object is attached inside the multipart message
+	alt_msg = MIMEMultipart('alternative')
+	
+	# Verbose logging to display to/from/subj
+	if args.v:
+		print "\n### Verbose Output Enabled ###\n"
+		print "From: " + args.sender
+		print "To: " + args.recipient
+		print "Subject: " + args.subject 
+		if a:
+			print "Attachment:  " + os.path.basename(a) + "\n"
+	
+	# Attaches text/plain. Also attaches HTML if it is selected
+	# https://docs.python.org/3/library/email-examples.html (RFC 2046)
+	alt_msg.attach(MIMEText(args.body, "plain"))
+	if args.H:
+		alt_msg.attach(MIMEText(args.body, "html"))
+	
+	msg.attach(alt_msg)
+	
+	# Checks for an attachment argument, and if there is one identify it's type. 
+	# Borrowed from https://docs.python.org/2.4/lib/node597.html
+	if a is not None:
+		ctype, encoding = mimetypes.guess_type(a)
+		if ctype is None or encoding is not None:
+		    ctype = "application/octet-stream"
+		
+		maintype, subtype = ctype.split("/", 1)
+		
+		if maintype == "text":
+		    fp = open(a)
+		    # Note: we should handle calculating the charset
+		    attachment = MIMEText(fp.read(), _subtype=subtype)
+		    fp.close()
+		elif maintype == "image":
+		    fp = open(a, "rb")
+		    attachment = MIMEImage(fp.read(), _subtype=subtype)
+		    fp.close()
+		elif maintype == "audio":
+		    fp = open(a, "rb")
+		    attachment = MIMEAudio(fp.read(), _subtype=subtype)
+		    fp.close()
+		else:
+		    fp = open(a, "rb")
+		    attachment = MIMEBase(maintype, subtype)
+		    attachment.set_payload(fp.read())
+		    fp.close()
+		    encoders.encode_base64(attachment)
+		attachment.add_header("Content-Disposition", "attachment", filename=os.path.basename(a))
+		msg.attach(attachment)
+	
+	# This line will literally print the entire email including headers
+	# print "\n\n\n" + msg.as_string() + "\n\n\n"
+
+	return msg
+
+def sendmsg(server, msg):
+	# Sends the email DATA
+	prfrom = server.docmd("MAIL from:", args.sender)
+	prto = server.docmd("RCPT to:", args.recipient)
+	prdata = server.docmd("DATA")
+	qid = server.docmd(msg.as_string() + "\r\n.")
+	
+	
+	# Prints what happened above when attempting to send
+	if args.v:
+		print prfrom
+		print prto
+		print prdata
+		print qid
+	if args.q:
+		# print qid
+		print qid[1].split(" ")[4]
+
+
+if __name__== "__main__":
+  main()
